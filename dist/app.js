@@ -23,9 +23,16 @@
   let isAnimating = false;
   let touchStartX = 0;
   let touchStartY = 0;
+  let didSwipe = false;
 
   const pageSrc = (page) => `pages/page-${String(page).padStart(2, "0")}.jpg`;
-  const pageName = (page) => page === 1 ? "封面" : page === TOTAL_PAGES ? "封底" : `第 ${page} 页`;
+  const physicalRange = (page) => {
+    if (page === 1) return "封面";
+    if (page === TOTAL_PAGES) return "封底";
+    const start = (page - 1) * 2;
+    return `第 ${start}–${start + 1} 页`;
+  };
+  const pageName = (page) => physicalRange(page);
 
   function preload(page) {
     if (page < 1 || page > TOTAL_PAGES) return;
@@ -36,13 +43,12 @@
   function spreadFor(page) {
     if (page === 1) return [null, 1];
     if (page === TOTAL_PAGES) return [TOTAL_PAGES, null];
-    return page % 2 === 0 ? [page, page + 1] : [page - 1, page];
+    return [page, page];
   }
 
   function normalizedPage(page) {
     const safe = Math.min(TOTAL_PAGES, Math.max(1, Number(page) || 1));
-    if (safe === 1 || safe === TOTAL_PAGES) return safe;
-    return safe % 2 === 0 ? safe : safe - 1;
+    return safe;
   }
 
   function makeImage(page, className = "page-image") {
@@ -56,10 +62,17 @@
     return image;
   }
 
-  function makeSlot(page, side) {
+  function makeSlot(page, side, split = page > 1) {
     const slot = document.createElement("div");
     slot.className = `page-slot page-slot--${side}${page ? "" : " page-slot--empty"}`;
-    if (page) slot.appendChild(makeImage(page));
+    if (page) {
+      const image = makeImage(page);
+      if (split) {
+        image.classList.add("page-image--spread", `page-image--${side}`);
+        image.alt = side === "left" ? (page === TOTAL_PAGES ? "封底图像" : `${physicalRange(page)}跨页图像`) : "";
+      }
+      slot.appendChild(image);
+    }
     return slot;
   }
 
@@ -67,18 +80,27 @@
     currentPage = normalizedPage(page);
     const spread = spreadFor(currentPage);
     book.replaceChildren();
-    book.classList.toggle("is-single", spread.includes(null));
-    book.classList.toggle("is-front-cover", currentPage === 1);
+    const isCover = currentPage === 1 || currentPage === TOTAL_PAGES;
+    book.classList.toggle("is-single", isCover);
     book.classList.toggle("is-back-cover", currentPage === TOTAL_PAGES);
-    book.append(makeSlot(spread[0], "left"), makeSlot(spread[1], "right"));
+    if (currentPage === 1) {
+      const cover = makeSlot(1, "cover", false);
+      cover.classList.add("page-slot--cover");
+      book.appendChild(cover);
+    } else if (currentPage === TOTAL_PAGES) {
+      const backCover = makeSlot(TOTAL_PAGES, "left", true);
+      backCover.classList.add("page-slot--cover");
+      book.appendChild(backCover);
+    } else {
+      book.append(makeSlot(currentPage, "left"), makeSlot(currentPage, "right"));
+    }
 
     updateControls(spread, announce);
     for (let i = currentPage - 2; i <= currentPage + 4; i += 1) preload(i);
   }
 
   function updateControls(spread, announce) {
-    const visible = spread.filter(Boolean);
-    const label = visible.length > 1 ? `第 ${visible[0]}–${visible[1]} 页 / ${TOTAL_PAGES}` : `${pageName(visible[0])} / ${TOTAL_PAGES}`;
+    const label = physicalRange(currentPage);
     pageLabel.textContent = label;
     pageSlider.value = String(currentPage);
     previousButton.disabled = currentPage <= 1;
@@ -86,21 +108,14 @@
     nextButton.disabled = currentPage >= TOTAL_PAGES;
     nextPageZone.disabled = currentPage >= TOTAL_PAGES;
     document.querySelectorAll(".thumbnail-button").forEach((button) => {
-      button.setAttribute("aria-current", visible.includes(Number(button.dataset.page)) ? "page" : "false");
+      button.setAttribute("aria-current", Number(button.dataset.page) === currentPage ? "page" : "false");
     });
-    if (announce) book.setAttribute("aria-label", `当前显示：${label}`);
+    book.setAttribute("aria-label", `当前显示：${label}`);
     window.location.hash = `page=${currentPage}`;
   }
 
   function destination(direction) {
-    if (direction > 0) {
-      if (currentPage === 1) return 2;
-      if (currentPage >= 20) return 22;
-      return currentPage + 2;
-    }
-    if (currentPage === 22) return 20;
-    if (currentPage <= 2) return 1;
-    return currentPage - 2;
+    return currentPage + direction;
   }
 
   function turn(direction) {
@@ -108,6 +123,17 @@
     if (target < 1 || target > TOTAL_PAGES || isAnimating) return;
     if (REDUCED_MOTION.matches) {
       render(target);
+      return;
+    }
+
+    if (currentPage === 1 || target === 1 || currentPage === TOTAL_PAGES || target === TOTAL_PAGES) {
+      isAnimating = true;
+      const frames = direction > 0
+        ? [{ opacity: 1, transform: "perspective(1800px) rotateY(0deg)" }, { opacity: .35, transform: "perspective(1800px) rotateY(-72deg)" }, { opacity: 0, transform: "perspective(1800px) rotateY(-102deg)" }]
+        : [{ opacity: 0, transform: "perspective(1800px) rotateY(-102deg)" }, { opacity: .35, transform: "perspective(1800px) rotateY(-72deg)" }, { opacity: 1, transform: "perspective(1800px) rotateY(0deg)" }];
+      book.animate(frames, { duration: 620, easing: "cubic-bezier(.24,.72,.18,1)" });
+      window.setTimeout(() => render(target), 310);
+      window.setTimeout(() => { isAnimating = false; }, 650);
       return;
     }
 
@@ -139,10 +165,10 @@
     sheet.className = `turn-sheet ${direction > 0 ? "forward" : "backward"}`;
     const front = document.createElement("div");
     front.className = "turn-face front";
-    front.appendChild(makeImage(turningFront));
+    front.appendChild(makeSlot(turningFront, direction > 0 ? "right" : "left").firstChild);
     const back = document.createElement("div");
     back.className = "turn-face back";
-    back.appendChild(makeImage(turningBack));
+    back.appendChild(makeSlot(turningBack, direction > 0 ? "left" : "right").firstChild);
     sheet.append(front, back);
     book.append(guard, sheet);
 
@@ -154,7 +180,7 @@
     window.setTimeout(() => {
       isAnimating = false;
       render(target);
-    }, 760);
+    }, 900);
   }
 
   function buildThumbnails() {
@@ -169,7 +195,7 @@
       image.loading = page > 6 ? "lazy" : "eager";
       image.alt = "";
       const number = document.createElement("span");
-      number.textContent = String(page).padStart(2, "0");
+      number.textContent = page === 1 ? "封面" : page === TOTAL_PAGES ? "封底" : `${(page - 1) * 2}–${(page - 1) * 2 + 1}`;
       button.append(image, number);
       button.addEventListener("click", () => {
         render(page);
@@ -225,12 +251,33 @@
   book.addEventListener("touchstart", (event) => {
     touchStartX = event.changedTouches[0].clientX;
     touchStartY = event.changedTouches[0].clientY;
+    didSwipe = false;
   }, { passive: true });
   book.addEventListener("touchend", (event) => {
     const deltaX = event.changedTouches[0].clientX - touchStartX;
     const deltaY = event.changedTouches[0].clientY - touchStartY;
-    if (Math.abs(deltaX) > 54 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) turn(deltaX < 0 ? 1 : -1);
+    if (Math.abs(deltaX) > 54 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+      didSwipe = true;
+      turn(deltaX < 0 ? 1 : -1);
+    }
   }, { passive: true });
+
+  book.addEventListener("click", (event) => {
+    if (didSwipe) {
+      didSwipe = false;
+      return;
+    }
+    if (currentPage === 1) {
+      turn(1);
+      return;
+    }
+    if (currentPage === TOTAL_PAGES) {
+      turn(-1);
+      return;
+    }
+    const bounds = book.getBoundingClientRect();
+    turn(event.clientX < bounds.left + bounds.width / 2 ? -1 : 1);
+  });
 
   MOBILE_QUERY.addEventListener("change", () => render(currentPage, false));
   buildThumbnails();
