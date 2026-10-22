@@ -24,6 +24,7 @@
   let touchStartX = 0;
   let touchStartY = 0;
   let didSwipe = false;
+  const preloadCache = new Map();
 
   const pageSrc = (page) => `pages/page-${String(page).padStart(2, "0")}.jpg`;
   const physicalRange = (page) => {
@@ -35,9 +36,21 @@
   const pageName = (page) => physicalRange(page);
 
   function preload(page) {
-    if (page < 1 || page > TOTAL_PAGES) return;
+    if (page < 1 || page > TOTAL_PAGES) return Promise.resolve();
+    if (preloadCache.has(page)) return preloadCache.get(page);
     const image = new Image();
+    const ready = new Promise((resolve) => {
+      image.addEventListener("load", async () => {
+        if (typeof image.decode === "function") {
+          try { await image.decode(); } catch (_) { /* The loaded image is still usable. */ }
+        }
+        resolve();
+      }, { once: true });
+      image.addEventListener("error", resolve, { once: true });
+    });
     image.src = pageSrc(page);
+    preloadCache.set(page, ready);
+    return ready;
   }
 
   function spreadFor(page) {
@@ -76,6 +89,17 @@
     return slot;
   }
 
+  function makeSpread(page) {
+    const spread = document.createElement("div");
+    spread.className = "spread-page";
+    const image = makeImage(page);
+    image.width = 2000;
+    image.height = 1469;
+    image.alt = `${physicalRange(page)}跨页图像`;
+    spread.appendChild(image);
+    return spread;
+  }
+
   function render(page, announce = true) {
     currentPage = normalizedPage(page);
     const spread = spreadFor(currentPage);
@@ -92,7 +116,7 @@
       backCover.classList.add("page-slot--cover");
       book.appendChild(backCover);
     } else {
-      book.append(makeSlot(currentPage, "left"), makeSlot(currentPage, "right"));
+      book.appendChild(makeSpread(currentPage));
     }
 
     updateControls(spread, announce);
@@ -118,16 +142,18 @@
     return currentPage + direction;
   }
 
-  function turn(direction) {
+  async function turn(direction) {
     const target = destination(direction);
     if (target < 1 || target > TOTAL_PAGES || isAnimating) return;
+    isAnimating = true;
+    await preload(target);
     if (REDUCED_MOTION.matches) {
       render(target);
+      isAnimating = false;
       return;
     }
 
     if (currentPage === 1 || target === 1 || currentPage === TOTAL_PAGES || target === TOTAL_PAGES) {
-      isAnimating = true;
       const frames = direction > 0
         ? [{ opacity: 1, transform: "perspective(1800px) rotateY(0deg)" }, { opacity: .35, transform: "perspective(1800px) rotateY(-72deg)" }, { opacity: 0, transform: "perspective(1800px) rotateY(-102deg)" }]
         : [{ opacity: 0, transform: "perspective(1800px) rotateY(-102deg)" }, { opacity: .35, transform: "perspective(1800px) rotateY(-72deg)" }, { opacity: 1, transform: "perspective(1800px) rotateY(0deg)" }];
@@ -152,12 +178,12 @@
         { duration: 460, easing: "cubic-bezier(.2,.7,.2,1)" }
       );
       window.setTimeout(() => render(target), 210);
+      window.setTimeout(() => { isAnimating = false; }, 480);
       return;
     }
 
-    isAnimating = true;
     book.classList.remove("is-single");
-    book.replaceChildren(makeSlot(targetLeft, "left"), makeSlot(targetRight, "right"));
+    book.replaceChildren(makeSpread(target));
 
     const guard = makeSlot(direction > 0 ? currentLeft : currentRight, direction > 0 ? "left" : "right");
     guard.classList.add("page-guard", direction > 0 ? "left" : "right");
@@ -177,10 +203,12 @@
       guard.classList.add("fade");
     }));
 
+    window.setTimeout(() => guard.remove(), 410);
+
     window.setTimeout(() => {
       isAnimating = false;
       render(target);
-    }, 900);
+    }, 750);
   }
 
   function buildThumbnails() {
@@ -282,12 +310,16 @@
   MOBILE_QUERY.addEventListener("change", () => render(currentPage, false));
   buildThumbnails();
   const requestedPage = Number(window.location.hash.replace("#page=", ""));
-  const cover = new Image();
-  cover.addEventListener("load", () => {
+  preload(1).then(() => {
     loadingCard.classList.add("is-hidden");
     window.setTimeout(() => { loadingCard.hidden = true; }, 260);
     render(requestedPage >= 1 && requestedPage <= TOTAL_PAGES ? requestedPage : 1);
+    const warmPages = [2, 3, TOTAL_PAGES];
+    warmPages.forEach(preload);
+    const warmAll = () => {
+      for (let page = 1; page <= TOTAL_PAGES; page += 1) preload(page);
+    };
+    if ("requestIdleCallback" in window) window.requestIdleCallback(warmAll, { timeout: 1800 });
+    else window.setTimeout(warmAll, 500);
   });
-  cover.addEventListener("error", () => { loadingCard.textContent = "页面加载失败，请确认 pages 文件夹完整。"; });
-  cover.src = pageSrc(1);
 })();
