@@ -22,7 +22,7 @@
       <p id="readerHelp" class="sr-only">点击右页向后翻，点击左页向前翻；也可以使用左右方向键、触屏滑动，或打开右上角目录。</p>
       <section class="book-stage" aria-describedby="readerHelp" aria-label="电子书阅读器">
         <div class="book-wrap" id="bookWrap">
-          <div class="book" id="book" aria-live="polite"></div>
+          <div class="flip-book" id="book" aria-live="polite"></div>
           <div class="loading-card" id="loadingCard" role="status">
             <span class="loading-line"></span>
             <span>正在装帧页面…</span>
@@ -45,6 +45,7 @@
     </aside>
     <div class="scrim" id="scrim" hidden></div>
 
+    <script src="vendor/page-flip.browser.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
