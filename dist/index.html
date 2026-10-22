@@ -11,28 +11,16 @@
   <body>
     <a class="skip-link" href="#reader">跳到阅读区域</a>
 
-    <header class="topbar">
-      <div class="identity">
-        <span class="eyebrow">SUMMER JOURNAL · 2023</span>
-        <h1>夏日旅行</h1>
-      </div>
-      <div class="top-actions">
-        <button class="icon-button" id="thumbButton" type="button" aria-label="打开页面缩略图" aria-expanded="false" aria-controls="thumbnailPanel">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        </button>
-        <button class="icon-button" id="fullscreenButton" type="button" aria-label="进入全屏阅读">
-          <svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
-        </button>
-      </div>
-    </header>
+    <div class="reader-menu">
+      <button class="icon-button directory-button" id="thumbButton" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="thumbnailPanel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+    </div>
 
     <main id="reader" class="reader" tabindex="-1">
-      <p id="readerHelp" class="sr-only">点击右页向后翻，点击左页向前翻；也可以使用左右方向键、底部按钮或触屏滑动。</p>
+      <h1 class="sr-only">夏日旅行</h1>
+      <p id="readerHelp" class="sr-only">点击右页向后翻，点击左页向前翻；也可以使用左右方向键、触屏滑动，或打开右上角目录。</p>
       <section class="book-stage" aria-describedby="readerHelp" aria-label="电子书阅读器">
-        <button class="page-zone page-zone--previous" id="previousPageZone" type="button" aria-label="上一页">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-
         <div class="book-wrap" id="bookWrap">
           <div class="book" id="book" aria-live="polite"></div>
           <div class="loading-card" id="loadingCard" role="status">
@@ -40,33 +28,14 @@
             <span>正在装帧页面…</span>
           </div>
         </div>
-
-        <button class="page-zone page-zone--next" id="nextPageZone" type="button" aria-label="下一页">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
       </section>
     </main>
-
-    <footer class="controls" aria-label="阅读控制">
-      <button class="control-button" id="previousButton" type="button" aria-label="上一页">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-        <span>上一页</span>
-      </button>
-      <label class="progress-control">
-        <span class="page-label" id="pageLabel">封面</span>
-        <input id="pageSlider" type="range" min="1" max="22" value="1" aria-label="选择页码" />
-      </label>
-      <button class="control-button" id="nextButton" type="button" aria-label="下一页">
-        <span>下一页</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-      </button>
-    </footer>
 
     <aside class="thumbnail-panel" id="thumbnailPanel" role="dialog" aria-modal="true" aria-label="页面缩略图" aria-hidden="true" inert>
       <div class="panel-heading">
         <div>
-          <span class="eyebrow">PAGE OVERVIEW</span>
-          <h2>全部页面</h2>
+          <span class="eyebrow">CONTENTS</span>
+          <h2>目录</h2>
         </div>
         <button class="icon-button icon-button--light" id="closeThumbButton" type="button" aria-label="关闭页面缩略图">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>

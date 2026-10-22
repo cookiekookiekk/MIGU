@@ -6,17 +6,10 @@
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
   const book = document.getElementById("book");
   const loadingCard = document.getElementById("loadingCard");
-  const pageLabel = document.getElementById("pageLabel");
-  const pageSlider = document.getElementById("pageSlider");
-  const previousButton = document.getElementById("previousButton");
-  const nextButton = document.getElementById("nextButton");
-  const previousPageZone = document.getElementById("previousPageZone");
-  const nextPageZone = document.getElementById("nextPageZone");
   const thumbnailPanel = document.getElementById("thumbnailPanel");
   const thumbnailGrid = document.getElementById("thumbnailGrid");
   const thumbButton = document.getElementById("thumbButton");
   const closeThumbButton = document.getElementById("closeThumbButton");
-  const fullscreenButton = document.getElementById("fullscreenButton");
   const scrim = document.getElementById("scrim");
 
   let currentPage = 1;
@@ -125,12 +118,6 @@
 
   function updateControls(spread, announce) {
     const label = physicalRange(currentPage);
-    pageLabel.textContent = label;
-    pageSlider.value = String(currentPage);
-    previousButton.disabled = currentPage <= 1;
-    previousPageZone.disabled = currentPage <= 1;
-    nextButton.disabled = currentPage >= TOTAL_PAGES;
-    nextPageZone.disabled = currentPage >= TOTAL_PAGES;
     document.querySelectorAll(".thumbnail-button").forEach((button) => {
       button.setAttribute("aria-current", Number(button.dataset.page) === currentPage ? "page" : "false");
     });
@@ -203,12 +190,12 @@
       guard.classList.add("fade");
     }));
 
-    window.setTimeout(() => guard.remove(), 410);
+    window.setTimeout(() => guard.remove(), 440);
 
     window.setTimeout(() => {
       isAnimating = false;
       render(target);
-    }, 750);
+    }, 810);
   }
 
   function buildThumbnails() {
@@ -239,6 +226,7 @@
     thumbnailPanel.classList.add("is-open");
     thumbnailPanel.setAttribute("aria-hidden", "false");
     thumbButton.setAttribute("aria-expanded", "true");
+    thumbButton.setAttribute("aria-label", "关闭目录");
     scrim.hidden = false;
     closeThumbButton.focus();
   }
@@ -248,28 +236,14 @@
     thumbnailPanel.setAttribute("aria-hidden", "true");
     thumbnailPanel.inert = true;
     thumbButton.setAttribute("aria-expanded", "false");
+    thumbButton.setAttribute("aria-label", "打开目录");
     scrim.hidden = true;
     thumbButton.focus();
   }
 
-  function updateFullscreenState() {
-    const active = Boolean(document.fullscreenElement);
-    document.body.classList.toggle("is-fullscreen", active);
-    fullscreenButton.setAttribute("aria-label", active ? "退出全屏阅读" : "进入全屏阅读");
-  }
-
-  [previousButton, previousPageZone].forEach((button) => button.addEventListener("click", () => turn(-1)));
-  [nextButton, nextPageZone].forEach((button) => button.addEventListener("click", () => turn(1)));
   thumbButton.addEventListener("click", openThumbnails);
   closeThumbButton.addEventListener("click", closeThumbnails);
   scrim.addEventListener("click", closeThumbnails);
-  pageSlider.addEventListener("input", (event) => render(event.target.value, false));
-  fullscreenButton.addEventListener("click", async () => {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
-  });
-  document.addEventListener("fullscreenchange", updateFullscreenState);
-
   document.addEventListener("keydown", (event) => {
     if (!thumbnailPanel.classList.contains("is-open") && event.key === "ArrowRight") turn(1);
     if (!thumbnailPanel.classList.contains("is-open") && event.key === "ArrowLeft") turn(-1);
@@ -308,6 +282,10 @@
   });
 
   MOBILE_QUERY.addEventListener("change", () => render(currentPage, false));
+  window.addEventListener("hashchange", () => {
+    const requested = Number(window.location.hash.replace("#page=", ""));
+    if (!isAnimating && requested >= 1 && requested <= TOTAL_PAGES && requested !== currentPage) render(requested, false);
+  });
   buildThumbnails();
   const requestedPage = Number(window.location.hash.replace("#page=", ""));
   preload(1).then(() => {
