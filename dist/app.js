@@ -34,7 +34,6 @@
   }
 
   function spreadFor(page) {
-    if (MOBILE_QUERY.matches) return [page];
     if (page === 1) return [null, 1];
     if (page === TOTAL_PAGES) return [TOTAL_PAGES, null];
     return page % 2 === 0 ? [page, page + 1] : [page - 1, page];
@@ -42,7 +41,7 @@
 
   function normalizedPage(page) {
     const safe = Math.min(TOTAL_PAGES, Math.max(1, Number(page) || 1));
-    if (MOBILE_QUERY.matches || safe === 1 || safe === TOTAL_PAGES) return safe;
+    if (safe === 1 || safe === TOTAL_PAGES) return safe;
     return safe % 2 === 0 ? safe : safe - 1;
   }
 
@@ -68,16 +67,10 @@
     currentPage = normalizedPage(page);
     const spread = spreadFor(currentPage);
     book.replaceChildren();
-    book.classList.toggle("is-single", spread.length === 1 || spread.includes(null));
-
-    if (spread.length === 1) {
-      book.appendChild(makeSlot(spread[0], "right"));
-    } else if (spread.includes(null)) {
-      const onlyPage = spread.find(Boolean);
-      book.appendChild(makeSlot(onlyPage, onlyPage === 1 ? "right" : "left"));
-    } else {
-      book.append(makeSlot(spread[0], "left"), makeSlot(spread[1], "right"));
-    }
+    book.classList.toggle("is-single", spread.includes(null));
+    book.classList.toggle("is-front-cover", currentPage === 1);
+    book.classList.toggle("is-back-cover", currentPage === TOTAL_PAGES);
+    book.append(makeSlot(spread[0], "left"), makeSlot(spread[1], "right"));
 
     updateControls(spread, announce);
     for (let i = currentPage - 2; i <= currentPage + 4; i += 1) preload(i);
@@ -100,7 +93,6 @@
   }
 
   function destination(direction) {
-    if (MOBILE_QUERY.matches) return currentPage + direction;
     if (direction > 0) {
       if (currentPage === 1) return 2;
       if (currentPage >= 20) return 22;
@@ -114,7 +106,7 @@
   function turn(direction) {
     const target = destination(direction);
     if (target < 1 || target > TOTAL_PAGES || isAnimating) return;
-    if (MOBILE_QUERY.matches || REDUCED_MOTION.matches) {
+    if (REDUCED_MOTION.matches) {
       render(target);
       return;
     }
