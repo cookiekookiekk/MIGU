@@ -137,6 +137,13 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
   background-color: rgba(173, 151, 116, .12);
 }
 
+/* The back cover and the final blank leaf are the two faces of one sheet.
+   Hide the stationary duplicate while that sheet is moving. */
+.flip-book.is-turning-to-back-cover
+  .book-page[data-source="21"][data-side="right"].--simple {
+  visibility: hidden;
+}
+
 /* The engine provides the curved clipping; keep its shadows restrained to avoid black flashes. */
 .stf__outerShadow,
 .stf__innerShadow { opacity: .72; }

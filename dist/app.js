@@ -2,10 +2,8 @@
   "use strict";
 
   const TOTAL_LOGICAL_PAGES = 22;
-  const LAST_CONTENT_SOURCE = 20;
-  const OMITTED_BLANK_SOURCE = 21;
   const BACK_COVER_SOURCE = 22;
-  const TOTAL_PHYSICAL_PAGES = 1 + (LAST_CONTENT_SOURCE - 1) * 2 + 1;
+  const TOTAL_PHYSICAL_PAGES = 42;
   const LAST_PHYSICAL_PAGE = TOTAL_PHYSICAL_PAGES - 1;
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
   const book = document.getElementById("book");
@@ -29,7 +27,7 @@
 
   function logicalToPhysical(page) {
     if (page <= 1) return 0;
-    if (page >= OMITTED_BLANK_SOURCE) return LAST_PHYSICAL_PAGE;
+    if (page >= TOTAL_LOGICAL_PAGES) return LAST_PHYSICAL_PAGE;
     return 1 + (page - 2) * 2;
   }
 
@@ -61,6 +59,8 @@
     page.className = "book-page";
     page.dataset.density = "soft";
     page.dataset.label = label;
+    page.dataset.source = String(source);
+    page.dataset.side = side;
     page.setAttribute("aria-hidden", "true");
     page.appendChild(makeImage(source, side));
     return page;
@@ -69,7 +69,7 @@
   function buildPhysicalPages() {
     const fragment = document.createDocumentFragment();
     fragment.appendChild(makePhysicalPage(1, "full", "封面"));
-    for (let source = 2; source <= LAST_CONTENT_SOURCE; source += 1) {
+    for (let source = 2; source < BACK_COVER_SOURCE; source += 1) {
       const label = logicalLabel(source);
       fragment.appendChild(makePhysicalPage(source, "left", `${label}左页`));
       fragment.appendChild(makePhysicalPage(source, "right", `${label}右页`));
@@ -81,7 +81,6 @@
   function preloadAllSources() {
     const tasks = [];
     for (let source = 1; source <= TOTAL_LOGICAL_PAGES; source += 1) {
-      if (source === OMITTED_BLANK_SOURCE) continue;
       tasks.push(new Promise((resolve) => {
         const image = new Image();
         image.addEventListener("load", async () => {
@@ -111,7 +110,6 @@
   function buildThumbnails() {
     const fragment = document.createDocumentFragment();
     for (let page = 1; page <= TOTAL_LOGICAL_PAGES; page += 1) {
-      if (page === OMITTED_BLANK_SOURCE) continue;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "thumbnail-button";
@@ -202,7 +200,20 @@
 
   function installNaturalTurnPath(instance) {
     const controller = instance.getFlipController();
+    const originalStart = controller.start.bind(controller);
     const originalAnimate = controller.animateFlippingTo.bind(controller);
+
+    controller.start = function (point) {
+      const started = originalStart(point);
+      if (!started || !this.calc) return started;
+
+      const direction = this.calc.getDirection();
+      book.classList.toggle(
+        "is-turning-to-back-cover",
+        currentPhysicalPage === LAST_PHYSICAL_PAGE - 2 && direction === 0
+      );
+      return started;
+    };
 
     controller.animateFlippingTo = function (from, to, completeTurn, cleanup = true) {
       if (!completeTurn || !this.calc) {
@@ -291,6 +302,11 @@
       window.setTimeout(() => { loadingCard.hidden = true; }, 230);
     });
     pageFlip.on("flip", (event) => updateCurrentPage(Number(event.data)));
+    pageFlip.on("changeState", (event) => {
+      if (event.data === "read") {
+        book.classList.remove("is-turning-to-back-cover");
+      }
+    });
     pageFlip.loadFromHTML(document.querySelectorAll(".book-page"));
     installNaturalTurnPath(pageFlip);
 
