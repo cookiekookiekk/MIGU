@@ -194,6 +194,57 @@
     });
   }
 
+  function installNaturalTurnPath(instance) {
+    const controller = instance.getFlipController();
+    const originalAnimate = controller.animateFlippingTo.bind(controller);
+
+    controller.animateFlippingTo = function (from, to, completeTurn, cleanup = true) {
+      if (!completeTurn || !this.calc) {
+        return originalAnimate(from, to, completeTurn, cleanup);
+      }
+
+      const bounds = this.getBoundsRect();
+      const topTurn = this.calc.getCorner() === "top";
+      const bendY = topTurn ? bounds.height * .14 : bounds.height * .86;
+      const settleY = topTurn ? bounds.height * .08 : bounds.height * .92;
+      const control1 = { x: bounds.pageWidth * .55, y: bendY };
+      const control2 = { x: -bounds.pageWidth * .35, y: settleY };
+      const steps = 1000;
+      const frames = [];
+
+      for (let step = 0; step <= steps; step += 1) {
+        const time = step / steps;
+        // Start the fold promptly, then slow the sheet as it settles across
+        // the binding so the second half never reads as a lateral slide.
+        const progress = Math.pow(time, .72);
+        const inverse = 1 - progress;
+        const point = {
+          x: inverse ** 3 * from.x
+            + 3 * inverse ** 2 * progress * control1.x
+            + 3 * inverse * progress ** 2 * control2.x
+            + progress ** 3 * to.x,
+          y: inverse ** 3 * from.y
+            + 3 * inverse ** 2 * progress * control1.y
+            + 3 * inverse * progress ** 2 * control2.y
+            + progress ** 3 * to.y
+        };
+        frames.push(() => this.do(point));
+      }
+
+      this.render.startAnimation(frames, this.app.getSettings().flippingTime, () => {
+        if (!this.calc) return;
+        this.calc.getDirection() === 1 ? this.app.turnToPrevPage() : this.app.turnToNextPage();
+        if (cleanup) {
+          this.render.setBottomPage(null);
+          this.render.setFlippingPage(null);
+          this.render.clearShadow();
+          this.setState("read");
+          this.reset();
+        }
+      });
+    };
+  }
+
   async function start() {
     buildThumbnails();
     bindInteractions();
@@ -203,7 +254,7 @@
     const requested = Number(window.location.hash.replace("#page=", ""));
     const initialLogical = requested >= 1 && requested <= TOTAL_LOGICAL_PAGES ? requested : 1;
     const initialPhysical = logicalToPhysical(initialLogical);
-    const flipDuration = REDUCED_MOTION.matches ? 1 : 950;
+    const flipDuration = REDUCED_MOTION.matches ? 1 : 1250;
 
     pageFlip = new St.PageFlip(book, {
       width: 1000,
@@ -235,6 +286,7 @@
     });
     pageFlip.on("flip", (event) => updateCurrentPage(Number(event.data)));
     pageFlip.loadFromHTML(document.querySelectorAll(".book-page"));
+    installNaturalTurnPath(pageFlip);
 
     // Keep the cover layout, but animate both covers like flexible paper.
     [0, LAST_PHYSICAL_PAGE].forEach((index) => {
