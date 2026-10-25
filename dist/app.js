@@ -229,9 +229,19 @@
       originalDo(point);
       if (!this.calc || !book.classList.contains("is-turning-to-back-cover")) return;
 
-      const rawProgress = Math.min(100, Math.max(0, this.calc.getFlippingProgress()));
-      const closingProgress = 100 * Math.pow(rawProgress / 100, 1.18);
-      book.style.setProperty("--closing-page-progress", `${closingProgress}%`);
+      const bounds = this.getBoundsRect();
+      const toX = (value) => `${Math.min(100, Math.max(0, value / bounds.pageWidth * 100))}%`;
+      const toY = (value) => `${Math.min(100, Math.max(0, value / bounds.height * 100))}%`;
+      const top = this.calc.topIntersectPoint;
+      const side = this.calc.sideIntersectPoint;
+      const bottom = this.calc.bottomIntersectPoint;
+      const shape = ["0% 0%"];
+
+      shape.push(top ? `${toX(top.x)} 0%` : "100% 0%");
+      if (side) shape.push(`100% ${toY(side.y)}`);
+      shape.push(bottom ? `${toX(bottom.x)} 100%` : "0% 100%");
+      shape.push("0% 100%");
+      book.style.setProperty("--closing-flat-shape", shape.join(", "));
     };
 
     controller.animateFlippingTo = function (from, to, completeTurn, cleanup = true) {
@@ -324,7 +334,7 @@
     pageFlip.on("changeState", (event) => {
       if (event.data === "read") {
         book.classList.remove("is-turning-to-back-cover");
-        book.style.removeProperty("--closing-page-progress");
+        book.style.removeProperty("--closing-flat-shape");
       }
     });
     pageFlip.loadFromHTML(document.querySelectorAll(".book-page"));

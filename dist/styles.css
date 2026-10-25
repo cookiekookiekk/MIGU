@@ -141,8 +141,8 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
    cover. Let its flat area shrink with the fold instead of disappearing. */
 .flip-book.is-turning-to-back-cover
   .book-page[data-source="21"][data-side="right"].--simple {
-  clip-path: inset(0 var(--closing-page-progress, 0%) 0 0) !important;
-  -webkit-clip-path: inset(0 var(--closing-page-progress, 0%) 0 0) !important;
+  clip-path: polygon(var(--closing-flat-shape, 0 0, 100% 0, 100% 100%, 0 100%)) !important;
+  -webkit-clip-path: polygon(var(--closing-flat-shape, 0 0, 100% 0, 100% 100%, 0 100%)) !important;
   will-change: clip-path;
 }
 
