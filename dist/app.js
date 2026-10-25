@@ -201,10 +201,20 @@
   function installNaturalTurnPath(instance) {
     const controller = instance.getFlipController();
     const originalStart = controller.start.bind(controller);
+    const originalDo = controller.do.bind(controller);
     const originalAnimate = controller.animateFlippingTo.bind(controller);
 
     controller.start = function (point) {
-      const started = originalStart(point);
+      let startPoint = point;
+      if (currentPhysicalPage === LAST_PHYSICAL_PAGE - 2) {
+        const bookPoint = this.render.convertToBook(point);
+        if (this.getDirectionByPoint(bookPoint) === 0) {
+          const rect = this.render.getRect();
+          startPoint = { x: point.x, y: rect.top + rect.height - 1 };
+        }
+      }
+
+      const started = originalStart(startPoint);
       if (!started || !this.calc) return started;
 
       const direction = this.calc.getDirection();
@@ -213,6 +223,15 @@
         currentPhysicalPage === LAST_PHYSICAL_PAGE - 2 && direction === 0
       );
       return started;
+    };
+
+    controller.do = function (point) {
+      originalDo(point);
+      if (!this.calc || !book.classList.contains("is-turning-to-back-cover")) return;
+
+      const rawProgress = Math.min(100, Math.max(0, this.calc.getFlippingProgress()));
+      const closingProgress = 100 * Math.pow(rawProgress / 100, 1.18);
+      book.style.setProperty("--closing-page-progress", `${closingProgress}%`);
     };
 
     controller.animateFlippingTo = function (from, to, completeTurn, cleanup = true) {
@@ -305,6 +324,7 @@
     pageFlip.on("changeState", (event) => {
       if (event.data === "read") {
         book.classList.remove("is-turning-to-back-cover");
+        book.style.removeProperty("--closing-page-progress");
       }
     });
     pageFlip.loadFromHTML(document.querySelectorAll(".book-page"));
