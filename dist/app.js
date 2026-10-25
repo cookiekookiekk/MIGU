@@ -10,31 +10,11 @@
   const thumbnailPanel = document.getElementById("thumbnailPanel");
   const thumbnailGrid = document.getElementById("thumbnailGrid");
   const thumbButton = document.getElementById("thumbButton");
-  const musicButton = document.getElementById("musicButton");
   const closeThumbButton = document.getElementById("closeThumbButton");
   const scrim = document.getElementById("scrim");
 
   let pageFlip = null;
   let currentPhysicalPage = 0;
-  let audioContext = null;
-  let musicGain = null;
-  let musicDelay = null;
-  let musicScheduler = null;
-  let nextNoteTime = 0;
-  let melodyStep = 0;
-  let musicPlaying = false;
-  const activeMusicSources = new Set();
-
-  const MELODY = [64, 67, 69, 72, 69, 67, 62, 64, 67, 72, 74, 72, 69, 67, 64, 62];
-  const CHORDS = [
-    [48, 55, 60],
-    [45, 52, 57],
-    [41, 48, 53],
-    [43, 50, 55]
-  ];
-  const BEAT_SECONDS = 60 / 66;
-  let musicPreferred = true;
-  try { musicPreferred = localStorage.getItem("summer-travel-music") !== "off"; } catch (_) { /* Storage is optional. */ }
 
   const sourceFor = (page) => `pages/page-${String(page).padStart(2, "0")}.jpg`;
   const logicalLabel = (page) => {
@@ -54,130 +34,6 @@
     if (page <= 0) return 1;
     if (page >= LAST_PHYSICAL_PAGE) return TOTAL_LOGICAL_PAGES;
     return Math.floor((page - 1) / 2) + 2;
-  }
-
-  function setMusicPreference(enabled) {
-    musicPreferred = enabled;
-    try { localStorage.setItem("summer-travel-music", enabled ? "on" : "off"); } catch (_) { /* Storage is optional. */ }
-  }
-
-  function updateMusicButton() {
-    musicButton.classList.toggle("is-playing", musicPlaying);
-    musicButton.setAttribute("aria-pressed", String(musicPlaying));
-    musicButton.setAttribute("aria-label", musicPlaying ? "暂停背景音乐" : "开启背景音乐");
-  }
-
-  function midiToFrequency(note) {
-    return 440 * Math.pow(2, (note - 69) / 12);
-  }
-
-  function createMusicEngine() {
-    if (audioContext) return;
-    const AudioEngine = window.AudioContext || window.webkitAudioContext;
-    if (!AudioEngine) throw new Error("Web Audio is unavailable");
-    audioContext = new AudioEngine();
-
-    musicGain = audioContext.createGain();
-    musicGain.gain.value = 0;
-    musicDelay = audioContext.createDelay(.6);
-    musicDelay.delayTime.value = .31;
-    const feedback = audioContext.createGain();
-    feedback.gain.value = .16;
-    const wet = audioContext.createGain();
-    wet.gain.value = .18;
-    musicDelay.connect(feedback);
-    feedback.connect(musicDelay);
-    musicDelay.connect(wet);
-    wet.connect(musicGain);
-    musicGain.connect(audioContext.destination);
-  }
-
-  function playTone(note, time, duration, level, pad = false) {
-    const oscillator = audioContext.createOscillator();
-    const overtone = audioContext.createOscillator();
-    const toneGain = audioContext.createGain();
-    const toneFilter = audioContext.createBiquadFilter();
-    const frequency = midiToFrequency(note);
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, time);
-    overtone.type = pad ? "sine" : "triangle";
-    overtone.frequency.setValueAtTime(frequency * 2, time);
-    overtone.detune.value = pad ? 4 : -3;
-    toneFilter.type = "lowpass";
-    toneFilter.frequency.setValueAtTime(pad ? 760 : 1500, time);
-    toneFilter.Q.value = .45;
-
-    toneGain.gain.setValueAtTime(.0001, time);
-    toneGain.gain.exponentialRampToValueAtTime(level, time + (pad ? .7 : .06));
-    toneGain.gain.exponentialRampToValueAtTime(.0001, time + duration);
-
-    oscillator.connect(toneFilter);
-    overtone.connect(toneFilter);
-    toneFilter.connect(toneGain);
-    toneGain.connect(musicGain);
-    toneGain.connect(musicDelay);
-    oscillator.start(time);
-    overtone.start(time);
-    oscillator.stop(time + duration + .05);
-    overtone.stop(time + duration + .05);
-    activeMusicSources.add(oscillator);
-    activeMusicSources.add(overtone);
-    oscillator.addEventListener("ended", () => activeMusicSources.delete(oscillator), { once: true });
-    overtone.addEventListener("ended", () => activeMusicSources.delete(overtone), { once: true });
-  }
-
-  function scheduleMusic() {
-    if (!musicPlaying || !audioContext) return;
-    while (nextNoteTime < audioContext.currentTime + 1.2) {
-      if (melodyStep % 8 === 0) {
-        const chord = CHORDS[Math.floor(melodyStep / 8) % CHORDS.length];
-        chord.forEach((note) => playTone(note, nextNoteTime, BEAT_SECONDS * 7.7, .018, true));
-      }
-      const note = MELODY[melodyStep % MELODY.length];
-      const gentlePause = melodyStep % 4 === 3;
-      if (!gentlePause) playTone(note, nextNoteTime, BEAT_SECONDS * 1.7, .055);
-      melodyStep += 1;
-      nextNoteTime += BEAT_SECONDS;
-    }
-  }
-
-  async function startMusic() {
-    if (musicPlaying) return;
-    try {
-      createMusicEngine();
-      await audioContext.resume();
-      musicPlaying = true;
-      nextNoteTime = audioContext.currentTime + .05;
-      musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-      musicGain.gain.setTargetAtTime(.17, audioContext.currentTime, .65);
-      scheduleMusic();
-      musicScheduler = window.setInterval(scheduleMusic, 260);
-      updateMusicButton();
-    } catch (_) {
-      musicButton.disabled = true;
-      musicButton.setAttribute("aria-label", "当前浏览器不支持背景音乐");
-    }
-  }
-
-  function stopMusic() {
-    if (!musicPlaying || !audioContext) return;
-    musicPlaying = false;
-    window.clearInterval(musicScheduler);
-    musicScheduler = null;
-    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setTargetAtTime(.0001, audioContext.currentTime, .18);
-    activeMusicSources.forEach((source) => {
-      try { source.stop(audioContext.currentTime + .45); } catch (_) { /* The source may already have ended. */ }
-    });
-    updateMusicButton();
-    window.setTimeout(() => {
-      if (!musicPlaying && audioContext.state === "running") audioContext.suspend();
-    }, 700);
-  }
-
-  function startPreferredMusic() {
-    if (musicPreferred && !musicPlaying) void startMusic();
   }
 
   function makeImage(source, side) {
@@ -301,17 +157,6 @@
   }
 
   function bindInteractions() {
-    musicButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (musicPlaying) {
-        setMusicPreference(false);
-        stopMusic();
-      } else {
-        setMusicPreference(true);
-        void startMusic();
-      }
-    });
-    book.addEventListener("pointerdown", startPreferredMusic);
     thumbButton.addEventListener("click", openThumbnails);
     closeThumbButton.addEventListener("click", closeThumbnails);
     scrim.addEventListener("click", closeThumbnails);
@@ -322,11 +167,9 @@
         return;
       }
       if (event.key === "ArrowRight") {
-        startPreferredMusic();
         currentPhysicalPage >= LAST_PHYSICAL_PAGE ? jumpAcrossBinding(0) : pageFlip.flipNext("top");
       }
       if (event.key === "ArrowLeft") {
-        startPreferredMusic();
         currentPhysicalPage <= 0 ? jumpAcrossBinding(LAST_PHYSICAL_PAGE) : pageFlip.flipPrev("top");
       }
     });
@@ -350,10 +193,6 @@
       }
     });
 
-    document.addEventListener("visibilitychange", () => {
-      if (!audioContext || !musicPlaying) return;
-      document.hidden ? audioContext.suspend() : audioContext.resume();
-    });
   }
 
   function installNaturalTurnPath(instance) {

@@ -11,16 +11,6 @@
   <body>
     <a class="skip-link" href="#reader">跳到阅读区域</a>
 
-    <div class="music-control">
-      <button class="icon-button music-button" id="musicButton" type="button" aria-label="开启背景音乐" aria-pressed="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M9 18V6.7L19 4v10"/>
-          <path d="M9 18.2c0 1.5-1.4 2.8-3.2 2.8S3 20.1 3 18.7 4.4 16 6.2 16H9M19 14.2c0 1.5-1.4 2.8-3.2 2.8S13 16.1 13 14.7s1.4-2.7 3.2-2.7H19"/>
-          <path class="music-slash" d="M4 4l16 16"/>
-        </svg>
-      </button>
-    </div>
-
     <div class="reader-menu">
       <button class="icon-button directory-button" id="thumbButton" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="thumbnailPanel">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -29,7 +19,7 @@
 
     <main id="reader" class="reader" tabindex="-1">
       <h1 class="sr-only">夏日旅行</h1>
-      <p id="readerHelp" class="sr-only">点击右页向后翻，点击左页向前翻；也可以使用左右方向键、触屏滑动，打开右上角目录，或使用左上角按钮控制背景音乐。</p>
+      <p id="readerHelp" class="sr-only">点击右页向后翻，点击左页向前翻；也可以使用左右方向键、触屏滑动，或打开右上角目录。</p>
       <section class="book-stage" aria-describedby="readerHelp" aria-label="电子书阅读器">
         <div class="book-wrap" id="bookWrap">
           <div class="flip-book" id="book" aria-live="polite"></div>
