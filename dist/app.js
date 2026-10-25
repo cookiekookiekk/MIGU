@@ -2,7 +2,10 @@
   "use strict";
 
   const TOTAL_LOGICAL_PAGES = 22;
-  const TOTAL_PHYSICAL_PAGES = 42;
+  const LAST_CONTENT_SOURCE = 20;
+  const OMITTED_BLANK_SOURCE = 21;
+  const BACK_COVER_SOURCE = 22;
+  const TOTAL_PHYSICAL_PAGES = 1 + (LAST_CONTENT_SOURCE - 1) * 2 + 1;
   const LAST_PHYSICAL_PAGE = TOTAL_PHYSICAL_PAGES - 1;
   const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
   const book = document.getElementById("book");
@@ -26,7 +29,7 @@
 
   function logicalToPhysical(page) {
     if (page <= 1) return 0;
-    if (page >= TOTAL_LOGICAL_PAGES) return LAST_PHYSICAL_PAGE;
+    if (page >= OMITTED_BLANK_SOURCE) return LAST_PHYSICAL_PAGE;
     return 1 + (page - 2) * 2;
   }
 
@@ -66,18 +69,19 @@
   function buildPhysicalPages() {
     const fragment = document.createDocumentFragment();
     fragment.appendChild(makePhysicalPage(1, "full", "封面"));
-    for (let source = 2; source <= 21; source += 1) {
+    for (let source = 2; source <= LAST_CONTENT_SOURCE; source += 1) {
       const label = logicalLabel(source);
       fragment.appendChild(makePhysicalPage(source, "left", `${label}左页`));
       fragment.appendChild(makePhysicalPage(source, "right", `${label}右页`));
     }
-    fragment.appendChild(makePhysicalPage(22, "left", "封底"));
+    fragment.appendChild(makePhysicalPage(BACK_COVER_SOURCE, "left", "封底"));
     book.appendChild(fragment);
   }
 
   function preloadAllSources() {
     const tasks = [];
     for (let source = 1; source <= TOTAL_LOGICAL_PAGES; source += 1) {
+      if (source === OMITTED_BLANK_SOURCE) continue;
       tasks.push(new Promise((resolve) => {
         const image = new Image();
         image.addEventListener("load", async () => {
@@ -107,6 +111,7 @@
   function buildThumbnails() {
     const fragment = document.createDocumentFragment();
     for (let page = 1; page <= TOTAL_LOGICAL_PAGES; page += 1) {
+      if (page === OMITTED_BLANK_SOURCE) continue;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "thumbnail-button";
