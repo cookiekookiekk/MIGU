@@ -56,6 +56,13 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; touch-action: 
   right: max(10px, env(safe-area-inset-right));
 }
 
+.music-control {
+  position: fixed;
+  z-index: 40;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -74,6 +81,12 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; touch-action: 
 .icon-button:hover { background: rgba(69, 76, 73, .88); border-color: rgba(255,255,255,.28); }
 .icon-button:active { background: rgba(88, 98, 94, .92); }
 .directory-button { opacity: .2; border-color: transparent; background: rgba(18, 20, 19, .26); }
+.music-button { opacity: .2; border-color: transparent; background: rgba(18, 20, 19, .26); }
+.music-button .music-slash { opacity: 1; transition: opacity 180ms ease; }
+.music-button.is-playing .music-slash { opacity: 0; }
+.music-button:hover,
+.music-button:focus-visible,
+.music-button.is-playing { opacity: .82; }
 .directory-button:hover,
 .directory-button:focus-visible,
 .directory-button[aria-expanded="true"] { opacity: 1; }
@@ -187,7 +200,8 @@ button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 }
 
 @media (max-width: 779px) {
-  .directory-button { opacity: .15; }
+  .directory-button,
+  .music-button { opacity: .15; }
   .book-wrap { padding: 4px; }
   .flip-book { width: min(calc(100vw - 8px), calc(100dvh * 1.362)) !important; }
 }
